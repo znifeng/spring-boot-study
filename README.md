@@ -8,4 +8,4 @@ Spring Boot学习Demo
 5. Mybatis的使用  
 6. 静态资源的访问  
 7. 不同环境的配置文件管理  
-8. logback的日志管理
+8. log4j2的日志管理
