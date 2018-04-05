@@ -1,15 +1,16 @@
 package com.example.demo.controller;
 
 import com.example.demo.service.FirstService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class HelloController {
-    private Logger logger = LoggerFactory.getLogger(getClass());
+    private Logger logger = LogManager.getLogger(HelloController.class);
     @Autowired
     private FirstService fs;
     @RequestMapping("/hello1")
@@ -29,6 +30,7 @@ public class HelloController {
     @RequestMapping("/hello3")
     public String hello3(){
         String msg = fs.getValue();
+        logger.info("this is hello3");
         return msg;
     }
 
