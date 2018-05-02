@@ -1,7 +1,5 @@
 package com.example.demo.controller;
 
-import com.example.demo.annotation.NotAllowEmpty;
-import com.example.demo.annotation.NotNull;
 import com.example.demo.service.FirstService;
 
 import org.apache.logging.log4j.LogManager;
@@ -16,7 +14,7 @@ public class HelloController {
     @Autowired
     private FirstService fs;
     @RequestMapping("/hello1")
-    public String hello1(@NotAllowEmpty  @NotNull String label,   @NotNull  String version){
+    public String hello1(String label, String version){
         logger.warn("label: " + label);
         logger.warn("version: " + version);
         return label+"-"+version;

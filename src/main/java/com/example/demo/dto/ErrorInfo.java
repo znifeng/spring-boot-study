@@ -10,6 +10,20 @@ public class ErrorInfo<T> {
     private String url;
     private T data;
 
+    public ErrorInfo(){}
+
+    public ErrorInfo(String message){
+        this.code = ERROR;
+        this.message = message;
+        this.url = null;
+    }
+
+    public ErrorInfo(String message, String url){
+        this.code = ERROR;
+        this.message=message;
+        this.url=url;
+    }
+
     public String getUrl() {
         return url;
     }

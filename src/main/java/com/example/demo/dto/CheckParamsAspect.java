@@ -1,78 +1,88 @@
 package com.example.demo.dto;
 
-import com.example.demo.annotation.NotAllowEmpty;
+import com.example.demo.annotation.NotEmpty;
+import com.example.demo.annotation.NotNull;
 import com.example.demo.exception.MyException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.annotation.*;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+import javax.servlet.http.HttpServletRequest;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-
 
 @Aspect
 @Component
 public class CheckParamsAspect {
-    private Logger logger = LogManager.getLogger(CheckParamsAspect.class);
+    private Logger logger = LogManager.getLogger(this.getClass());
+
     @Pointcut("execution(public * com.example.demo.controller.*.*(..))")
-    public void checkParams(){}
+    public void checkParamsPoint(){}
 
-    //环绕通知，环绕增强，相当于MethodInterceptor
-    @Around("checkParams()")
-    public Object arround(ProceedingJoinPoint pjp){
-        System.out.println("检查参数start...");
+    //切面检查controller方法的参数
+    @Around("checkParamsPoint()")
+    public Object arround(ProceedingJoinPoint point)throws MyException{
         try{
-            //Parameter Values
-            Object[] params = pjp.getArgs();
-            for (Object param:params){
-                System.out.println(param);
-            }
-            System.out.println("======================================");
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            HttpServletRequest request = attributes.getRequest();
+            String url = request.getRequestURL().toString();
 
-            //Controller name: com.example.demo.controller.HelloController
-            Class<?> classTarget = pjp.getTarget().getClass();
-            System.out.println(classTarget.getName());
-
-            //Method name: hello1
-            String methodName = pjp.getSignature().getName();
-            System.out.println(methodName);
-
-            //Parameter Type: java.lang.String
-            Class<?>[] paramTypes = ((MethodSignature)pjp.getSignature()).getParameterTypes();
-            for (Class<?> paramType : paramTypes){
-                System.out.println(paramType.getName());
-            }
-
-            //Parameter Name: label
-            String [] parameterNames= ((MethodSignature)pjp.getSignature()).getParameterNames();
-            for (String parameterName : parameterNames){
-                System.out.println(parameterName);
-            }
-
-            Method objMehtod = classTarget.getMethod(methodName, paramTypes);
+            //Controller class
+            Class<?> targetClass = point.getTarget().getClass();
+            //Method name
+            String methodName = point.getSignature().getName();
+            //Parameter Types
+            Class<?>[] parameterTypes = ((MethodSignature)point.getSignature()).getParameterTypes();
+            String[] parameterNames = ((MethodSignature)point.getSignature()).getParameterNames();
+            //Controller function method
+            Method method = targetClass.getMethod(methodName, parameterTypes);
             //一个参数可能会有多个注解。objMehtod.getParameterAnnotations()[i] 表示第i个参数的注解数组
-            Annotation[][] parameterAnnotations =  objMehtod.getParameterAnnotations();
-            for (int i=0; i<parameterAnnotations.length; i++){
+            Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+            for (int i=0; i<parameterAnnotations.length ; i++){
                 Annotation[] annotations = parameterAnnotations[i];
-                Object param = pjp.getArgs()[i];
-                System.out.println("param: " + param);
-                for (Annotation annotation : annotations){
-                    System.out.println(annotation.toString());
-                    if (annotation instanceof NotAllowEmpty){
-                        System.out.println("not allow empty");
-                    }
+                Object arg = point.getArgs()[i];
+                String parameterName = parameterNames[i];
+                for (Annotation annotation:annotations) {
+                   ErrorInfo errorInfo = checkAnnotation(annotation, parameterName, arg, url);
+                   if (errorInfo != null){
+                       return errorInfo;
+                   }
                 }
             }
-
-            Object o = pjp.proceed();
+            Object o= point.proceed();
             return o;
+        }catch (MyException myException){
+            throw myException;
         }catch (Throwable e){
-            e.printStackTrace();
+            logger.warn(e);
             return null;
         }
+    }
+
+    //根据参数的注解检查参数的有效性
+    public ErrorInfo checkAnnotation(Annotation annotation, String argName, Object arg, String url)throws MyException{
+        if(annotation instanceof NotEmpty){
+            if(arg == null){
+                return new ErrorInfo(String.format("The parameter %s can't be null.", argName), url);
+            }
+            if (arg instanceof String){
+                if(((String) arg).isEmpty()){
+                    return new ErrorInfo(String.format("The parameter %s can't be empty.", argName), url);
+                }
+            }else{
+                throw new MyException(String.format("The parameter %s with annotation NotEmpty is not a String", argName));
+            }
+        }
+        if(annotation instanceof NotNull && arg == null){
+            return new ErrorInfo(String.format("The parameter %s can't be null.", argName), url);
+        }
+        return null;
     }
 }
